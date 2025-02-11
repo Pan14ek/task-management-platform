@@ -1,5 +1,7 @@
 package com.taskmanagement.auth.api;
 
+import com.taskmanagement.auth.dto.LoginRequest;
+import com.taskmanagement.auth.dto.LoginResponse;
 import com.taskmanagement.auth.dto.RegisterRequest;
 import com.taskmanagement.auth.dto.RegisterResponse;
 import com.taskmanagement.auth.service.AuthService;
@@ -20,13 +22,19 @@ public class AuthController {
   @PostMapping("/auth/register")
   public ResponseEntity<RegisterResponse> registerNewUser(@RequestBody
                                                           RegisterRequest registerRequest) {
-
     NewUser newUser = new NewUser(registerRequest.username(), registerRequest.password());
 
     User registeredUser = authService.registerUser(newUser);
 
     return ResponseEntity.ok(
         new RegisterResponse(registeredUser.uuid(), registeredUser.username()));
+  }
+
+  @PostMapping("/auth/login")
+  public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginRequest loginRequest) {
+
+
+
   }
 
 }
