@@ -2,8 +2,10 @@ package com.taskmanagement.auth.api;
 
 import com.taskmanagement.auth.dto.LoginRequest;
 import com.taskmanagement.auth.dto.LoginResponse;
+import com.taskmanagement.auth.dto.LogoutResponse;
 import com.taskmanagement.auth.dto.RegisterRequest;
 import com.taskmanagement.auth.dto.RegisterResponse;
+import com.taskmanagement.auth.dto.UserInfoResponse;
 import com.taskmanagement.auth.dto.ValidateResponse;
 import com.taskmanagement.auth.service.AuthService;
 import com.taskmanagement.auth.service.model.CreatedRefreshToken;
@@ -17,15 +19,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @AllArgsConstructor
+@RequestMapping("/auth")
 public class AuthController {
 
+  private static final String BEARER_PREFIX = "Bearer ";
+  private static final String AUTHORIZATION = "Authorization";
   private final AuthService authService;
 
-  @PostMapping("/auth/register")
+  @PostMapping("/register")
   public ResponseEntity<RegisterResponse> registerNewUser(@RequestBody
                                                           RegisterRequest registerRequest) {
     NewUser newUser = new NewUser(registerRequest.username(), registerRequest.password());
@@ -36,7 +42,7 @@ public class AuthController {
         new RegisterResponse(registeredUser.uuid(), registeredUser.username()));
   }
 
-  @PostMapping("/auth/login")
+  @PostMapping("/login")
   public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginRequest loginRequest) {
     User user = authService.getUser(new GetUser(loginRequest.username(), loginRequest.password()));
 
@@ -46,16 +52,15 @@ public class AuthController {
         new LoginResponse(refreshToken.jwtToken(), refreshToken.refreshToken()));
   }
 
-  @GetMapping("/auth/validate")
+  @GetMapping("/validate")
   public ResponseEntity<ValidateResponse> validateToken(
-      @RequestHeader(value = "Authorization", required = false) String token) {
-
-    if (token == null || !token.startsWith("Bearer ")) {
+      @RequestHeader(value = AUTHORIZATION, required = false) String token) {
+    if (token == null || !token.startsWith(BEARER_PREFIX)) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
           .body(new ValidateResponse("Missing or invalid Authorization header", false));
     }
 
-    boolean isValidToken = authService.validateToken(token.replace("Bearer ", ""));
+    boolean isValidToken = authService.validateToken(token.replace(BEARER_PREFIX, ""));
 
     if (isValidToken) {
       return ResponseEntity.ok(new ValidateResponse("The token is valid", true));
@@ -63,6 +68,32 @@ public class AuthController {
 
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .body(new ValidateResponse("The token is invalid", false));
+  }
+
+  @GetMapping("/me")
+  public ResponseEntity<UserInfoResponse> getUserInfo(
+      @RequestHeader(value = AUTHORIZATION, required = false) String token) {
+    if (token == null || !token.startsWith(BEARER_PREFIX)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .body(null);
+    }
+
+    User userByToken = authService.getUserByToken(token.replace(BEARER_PREFIX, ""));
+
+    return ResponseEntity.ok(new UserInfoResponse(userByToken.uuid(), userByToken.username()));
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<LogoutResponse> logout(
+      @RequestHeader(value = AUTHORIZATION, required = false) String token) {
+    if (token == null || !token.startsWith(BEARER_PREFIX)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .body(new LogoutResponse("Missing or invalid Authorization header"));
+    }
+
+    authService.logoutUser(token);
+
+    return ResponseEntity.ok(new LogoutResponse("User logged out successfully"));
   }
 
 }

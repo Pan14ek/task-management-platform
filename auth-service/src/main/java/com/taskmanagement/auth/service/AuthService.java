@@ -5,6 +5,7 @@ import com.taskmanagement.auth.entity.UserEntity;
 import com.taskmanagement.auth.repository.RefreshTokenRepository;
 import com.taskmanagement.auth.repository.UserRepository;
 import com.taskmanagement.auth.service.exception.InvalidPasswordException;
+import com.taskmanagement.auth.service.exception.NotFoundRefreshTokenException;
 import com.taskmanagement.auth.service.exception.NotFoundUserException;
 import com.taskmanagement.auth.service.model.CreatedRefreshToken;
 import com.taskmanagement.auth.service.model.GetUser;
@@ -76,6 +77,40 @@ public class AuthService {
 
   public boolean validateToken(String token) {
     return jwtUtil.validateToken(token);
+  }
+
+  public User getUserByToken(String token) {
+    UUID userId = jwtUtil.getUserIdFromToken(token);
+
+    Optional<UserEntity> foundUser = userRepository.findById(userId);
+
+    if (foundUser.isEmpty()) {
+      throw new NotFoundUserException("User was not found by id: " + userId);
+    }
+
+    UserEntity userEntity = foundUser.get();
+
+    return new User(userEntity.getId().toString(), userEntity.getUsername(), "*******",
+        userEntity.getCreatedAt());
+  }
+
+  public void logoutUser(String token) {
+    UUID userId = jwtUtil.getUserIdFromToken(token);
+
+    Optional<UserEntity> foundUser = userRepository.findById(userId);
+
+    if (foundUser.isEmpty()) {
+      throw new NotFoundUserException("User was not found by id: " + userId);
+    }
+
+    Optional<RefreshTokenEntity> foundRefreshToken =
+        refreshTokenRepository.findByUser(foundUser.get());
+
+    if (foundRefreshToken.isEmpty()) {
+      throw new NotFoundRefreshTokenException("Refresh token was not found by id: " + userId);
+    }
+
+    refreshTokenRepository.delete(foundRefreshToken.get());
   }
 
   private static RefreshTokenEntity getRefreshTokenEntity(UserEntity userEntity) {
