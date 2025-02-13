@@ -1,23 +1,31 @@
 package com.taskmanagement.auth.service;
 
 import com.taskmanagement.auth.entity.RefreshTokenEntity;
+import com.taskmanagement.auth.entity.RoleEntity;
 import com.taskmanagement.auth.entity.UserEntity;
+import com.taskmanagement.auth.entity.UserRoleEntity;
+import com.taskmanagement.auth.entity.UserRoleId;
 import com.taskmanagement.auth.repository.RefreshTokenRepository;
+import com.taskmanagement.auth.repository.RoleRepository;
 import com.taskmanagement.auth.repository.UserRepository;
 import com.taskmanagement.auth.service.exception.InvalidPasswordException;
 import com.taskmanagement.auth.service.exception.InvalidRefreshTokenException;
 import com.taskmanagement.auth.service.exception.NotFoundRefreshTokenException;
+import com.taskmanagement.auth.service.exception.NotFoundRoleException;
 import com.taskmanagement.auth.service.exception.NotFoundUserException;
 import com.taskmanagement.auth.service.exception.RefreshTokenExpiredException;
 import com.taskmanagement.auth.service.model.CreatedRefreshToken;
 import com.taskmanagement.auth.service.model.GetUser;
 import com.taskmanagement.auth.service.model.NewUser;
+import com.taskmanagement.auth.service.model.Role;
 import com.taskmanagement.auth.service.model.User;
 import com.taskmanagement.auth.util.JwtUtil;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +37,7 @@ public class AuthService {
   private final UserRepository userRepository;
   private final RefreshTokenRepository refreshTokenRepository;
   private final BCryptPasswordEncoder passwordEncoder;
+  private final RoleRepository roleRepository;
   private final JwtUtil jwtUtil;
 
   @Transactional
@@ -39,10 +48,20 @@ public class AuthService {
     userEntity.setPassword(passwordEncoder.encode(newUser.password()));
     userEntity.setCreatedAt(LocalDate.now());
 
+    RoleEntity userRole = roleRepository.findByName("ROLE_USER")
+        .orElseThrow(() -> new NotFoundRoleException("Default role not found"));
+
+    UserRoleEntity userRoleAssignment =
+        getUserRoleEntity(userEntity, userRole);
+
+    userEntity.setRoles(Set.of(userRoleAssignment));
+
     UserEntity savedUser = userRepository.save(userEntity);
 
+    Set<Role> roles = getRoles(savedUser);
+
     return new User(savedUser.getId().toString(), savedUser.getUsername(), savedUser.getPassword(),
-        savedUser.getCreatedAt());
+        savedUser.getCreatedAt(), roles);
   }
 
   public User getUser(GetUser user) {
@@ -60,8 +79,10 @@ public class AuthService {
       throw new InvalidPasswordException("Password or username is invalid");
     }
 
+    Set<Role> roles = getRoles(userEntity);
+
     return new User(userEntity.getId().toString(), user.password(), "*******",
-        userEntity.getCreatedAt());
+        userEntity.getCreatedAt(), roles);
   }
 
   @Transactional
@@ -92,8 +113,10 @@ public class AuthService {
 
     UserEntity userEntity = foundUser.get();
 
+    Set<Role> roles = getRoles(userEntity);
+
     return new User(userEntity.getId().toString(), userEntity.getUsername(), "*******",
-        userEntity.getCreatedAt());
+        userEntity.getCreatedAt(), roles);
   }
 
   public void logoutUser(String token) {
@@ -147,4 +170,19 @@ public class AuthService {
     return refreshTokenEntity;
   }
 
+  private static Set<Role> getRoles(UserEntity userEntity) {
+    return userEntity.getRoles().stream().map((userRoleEntity -> {
+      RoleEntity roleEntity = userRoleEntity.getRole();
+
+      return new Role(roleEntity.getId().toString(), roleEntity.getName());
+    })).collect(Collectors.toSet());
+  }
+
+  private static UserRoleEntity getUserRoleEntity(UserEntity userEntity, RoleEntity userRole) {
+    UserRoleEntity userRoleAssignment = new UserRoleEntity();
+    userRoleAssignment.setId(new UserRoleId(userEntity.getId(), userRole.getId()));
+    userRoleAssignment.setUser(userEntity);
+    userRoleAssignment.setRole(userRole);
+    return userRoleAssignment;
+  }
 }
