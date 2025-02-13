@@ -72,7 +72,6 @@ public class AuthService {
     }
 
     UserEntity userEntity = foundUser.get();
-
     String encodedPassword = passwordEncoder.encode(user.password());
 
     if (!encodedPassword.equals(userEntity.getPassword())) {
@@ -90,7 +89,6 @@ public class AuthService {
     UserEntity userEntity = userRepository.getReferenceById(UUID.fromString(user.uuid()));
 
     RefreshTokenEntity refreshTokenEntity = getRefreshTokenEntity(userEntity);
-
     RefreshTokenEntity savedRefreshToken = refreshTokenRepository.save(refreshTokenEntity);
 
     String jwtToken = jwtUtil.generateAccessToken(UUID.fromString(user.uuid()), user.username());
