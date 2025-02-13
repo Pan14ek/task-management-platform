@@ -23,18 +23,16 @@ public class JwtUtil {
   }
 
   public String generateAccessToken(UUID userId, String username) {
-    return Jwts.builder()
-        .setSubject(userId.toString())
-        .claim("username", username)
-        .setIssuedAt(new Date())
-        .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+    return Jwts.builder().subject(userId.toString())
+        .claim("username", username).issuedAt(new Date())
+        .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
         .signWith(key, SignatureAlgorithm.HS256)
         .compact();
   }
 
   public String getUsernameFromToken(String token) {
-    return Jwts.parser().setSigningKey(key).build()
-        .parseClaimsJws(token).getBody().getSubject();
+    return Jwts.parser().setSigningKey(key).build().parseSignedClaims(token).getPayload()
+        .getSubject();
   }
 
   public boolean validateToken(String token) {
@@ -47,8 +45,9 @@ public class JwtUtil {
   }
 
   public UUID getUserIdFromToken(String token) {
-    return UUID.fromString(Jwts.parser().setSigningKey(key).build()
-        .parseClaimsJws(token).getBody().getSubject());
+    return UUID.fromString(
+        Jwts.parser().setSigningKey(key).build().parseSignedClaims(token).getPayload()
+            .getSubject());
   }
 
 }
