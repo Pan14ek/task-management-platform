@@ -3,6 +3,8 @@ package com.taskmanagement.auth.api;
 import com.taskmanagement.auth.dto.LoginRequest;
 import com.taskmanagement.auth.dto.LoginResponse;
 import com.taskmanagement.auth.dto.LogoutResponse;
+import com.taskmanagement.auth.dto.RefreshRequest;
+import com.taskmanagement.auth.dto.RefreshTokenResponse;
 import com.taskmanagement.auth.dto.RegisterRequest;
 import com.taskmanagement.auth.dto.RegisterResponse;
 import com.taskmanagement.auth.dto.UserInfoResponse;
@@ -52,6 +54,42 @@ public class AuthController {
         new LoginResponse(refreshToken.jwtToken(), refreshToken.refreshToken()));
   }
 
+  @PostMapping("/refresh")
+  public ResponseEntity<RefreshTokenResponse> refreshToken(
+      @RequestBody RefreshRequest refreshRequest) {
+    CreatedRefreshToken refreshToken =
+        authService.refreshAccessToken(refreshRequest.refreshToken());
+
+    return ResponseEntity.ok(
+        new RefreshTokenResponse(refreshToken.jwtToken(), refreshToken.refreshToken()));
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<LogoutResponse> logout(
+      @RequestHeader(value = AUTHORIZATION, required = false) String token) {
+    if (token == null || !token.startsWith(BEARER_PREFIX)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .body(new LogoutResponse("Missing or invalid Authorization header"));
+    }
+
+    authService.logoutUser(token.replace(BEARER_PREFIX, ""));
+
+    return ResponseEntity.ok(new LogoutResponse("User logged out successfully"));
+  }
+
+  @GetMapping("/me")
+  public ResponseEntity<UserInfoResponse> getUserInfo(
+      @RequestHeader(value = AUTHORIZATION, required = false) String token) {
+    if (token == null || !token.startsWith(BEARER_PREFIX)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .body(new UserInfoResponse(null, null));
+    }
+
+    User userByToken = authService.getUserByToken(token.replace(BEARER_PREFIX, ""));
+
+    return ResponseEntity.ok(new UserInfoResponse(userByToken.uuid(), userByToken.username()));
+  }
+
   @GetMapping("/validate")
   public ResponseEntity<ValidateResponse> validateToken(
       @RequestHeader(value = AUTHORIZATION, required = false) String token) {
@@ -69,31 +107,4 @@ public class AuthController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .body(new ValidateResponse("The token is invalid", false));
   }
-
-  @GetMapping("/me")
-  public ResponseEntity<UserInfoResponse> getUserInfo(
-      @RequestHeader(value = AUTHORIZATION, required = false) String token) {
-    if (token == null || !token.startsWith(BEARER_PREFIX)) {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-          .body(null);
-    }
-
-    User userByToken = authService.getUserByToken(token.replace(BEARER_PREFIX, ""));
-
-    return ResponseEntity.ok(new UserInfoResponse(userByToken.uuid(), userByToken.username()));
-  }
-
-  @PostMapping("/logout")
-  public ResponseEntity<LogoutResponse> logout(
-      @RequestHeader(value = AUTHORIZATION, required = false) String token) {
-    if (token == null || !token.startsWith(BEARER_PREFIX)) {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-          .body(new LogoutResponse("Missing or invalid Authorization header"));
-    }
-
-    authService.logoutUser(token);
-
-    return ResponseEntity.ok(new LogoutResponse("User logged out successfully"));
-  }
-
 }

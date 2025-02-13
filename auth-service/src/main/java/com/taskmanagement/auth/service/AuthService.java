@@ -5,8 +5,10 @@ import com.taskmanagement.auth.entity.UserEntity;
 import com.taskmanagement.auth.repository.RefreshTokenRepository;
 import com.taskmanagement.auth.repository.UserRepository;
 import com.taskmanagement.auth.service.exception.InvalidPasswordException;
+import com.taskmanagement.auth.service.exception.InvalidRefreshTokenException;
 import com.taskmanagement.auth.service.exception.NotFoundRefreshTokenException;
 import com.taskmanagement.auth.service.exception.NotFoundUserException;
+import com.taskmanagement.auth.service.exception.RefreshTokenExpiredException;
 import com.taskmanagement.auth.service.model.CreatedRefreshToken;
 import com.taskmanagement.auth.service.model.GetUser;
 import com.taskmanagement.auth.service.model.NewUser;
@@ -111,6 +113,27 @@ public class AuthService {
     }
 
     refreshTokenRepository.delete(foundRefreshToken.get());
+  }
+
+  public CreatedRefreshToken refreshAccessToken(String refreshTokenString) {
+    RefreshTokenEntity refreshToken = refreshTokenRepository.findByToken(refreshTokenString)
+        .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
+
+    if (refreshToken.getExpiryDate().isBefore(LocalDate.now())) {
+      refreshTokenRepository.delete(refreshToken);
+      throw new RefreshTokenExpiredException("Refresh token expired, please login again");
+    }
+
+    UserEntity user = refreshToken.getUser();
+
+    String jwtToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
+
+    refreshToken.setToken(UUID.randomUUID().toString());
+    refreshToken.setExpiryDate(LocalDate.now().plusDays(7));
+
+    refreshTokenRepository.save(refreshToken);
+
+    return new CreatedRefreshToken(jwtToken, refreshToken.getToken());
   }
 
   private static RefreshTokenEntity getRefreshTokenEntity(UserEntity userEntity) {
