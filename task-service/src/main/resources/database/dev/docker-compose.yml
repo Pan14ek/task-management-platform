@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  postgres-taskdb:
+    image: postgres:15
+    container_name: postgres-taskdb
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: taskbd
+    ports:
+      - "5433:5433"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./task-service/src/main/resources/database/dev/postgresql-config.yml:/docker-entrypoint-initdb.d/postgresql-config.yml
+
+volumes:
+  postgres_data:
