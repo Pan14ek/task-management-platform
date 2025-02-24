@@ -1,6 +1,7 @@
 package com.taskmanagement.task.entity;
 
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -19,10 +20,13 @@ public class CommentEntity {
   @Id
   private UUID id;
 
+  @Column(nullable = false, name = "user_id")
   private UUID userId;
 
+  @Column(nullable = false, name = "content")
   private String content;
 
+  @Column(name = "created_at")
   private LocalDateTime createdAt;
 
   @ManyToOne
