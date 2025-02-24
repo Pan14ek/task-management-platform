@@ -12,8 +12,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_auth-data:/var/lib/postgresql/data
       - ./auth-service/src/main/resources/database/dev/postgresql-config.yml:/docker-entrypoint-initdb.d/postgresql-config.yml
 
 volumes:
-  postgres_data:
+  postgres_auth-data:

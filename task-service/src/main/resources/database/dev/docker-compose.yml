@@ -8,12 +8,12 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: taskbd
+      POSTGRES_DB: taskdb
     ports:
-      - "5433:5433"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_task-data:/var/lib/postgresql/data
       - ./task-service/src/main/resources/database/dev/postgresql-config.yml:/docker-entrypoint-initdb.d/postgresql-config.yml
 
 volumes:
-  postgres_data:
+  postgres_task-data:
