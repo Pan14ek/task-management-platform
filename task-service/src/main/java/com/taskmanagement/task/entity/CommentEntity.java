@@ -30,8 +30,7 @@ public class CommentEntity {
   private LocalDateTime createdAt;
 
   @ManyToOne
-  @MapsId("taskId")
-  @JoinColumn(name = "comment_id")
+  @JoinColumn(name = "task_id")
   private TaskEntity task;
 
 }

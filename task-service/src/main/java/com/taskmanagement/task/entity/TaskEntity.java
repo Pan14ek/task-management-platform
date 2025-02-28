@@ -9,14 +9,14 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
 @Data
 @Table
 @NoArgsConstructor
-@RequiredArgsConstructor
+@AllArgsConstructor
 @Entity
 public class TaskEntity {
 
