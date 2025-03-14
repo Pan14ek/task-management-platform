@@ -1,10 +1,13 @@
 package com.taskmanagement.auth.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskmanagement.auth.entity.RefreshTokenEntity;
 import com.taskmanagement.auth.entity.RoleEntity;
 import com.taskmanagement.auth.entity.UserEntity;
 import com.taskmanagement.auth.entity.UserRoleEntity;
 import com.taskmanagement.auth.entity.UserRoleId;
+import com.taskmanagement.auth.kafka.producer.KafkaProducer;
 import com.taskmanagement.auth.repository.RefreshTokenRepository;
 import com.taskmanagement.auth.repository.RoleRepository;
 import com.taskmanagement.auth.repository.UserRepository;
@@ -27,10 +30,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 @AllArgsConstructor
 public class AuthService {
 
@@ -38,6 +43,8 @@ public class AuthService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final BCryptPasswordEncoder passwordEncoder;
   private final RoleRepository roleRepository;
+  private final KafkaProducer kafkaProducer;
+  private final ObjectMapper objectMapper;
   private final JwtUtil jwtUtil;
 
   @Transactional
@@ -60,8 +67,20 @@ public class AuthService {
 
     Set<Role> roles = getRoles(savedUser);
 
-    return new User(savedUser.getId().toString(), savedUser.getUsername(), savedUser.getPassword(),
-        savedUser.getCreatedAt(), roles);
+    User registeredUser =
+        new User(savedUser.getId().toString(), savedUser.getUsername(), savedUser.getPassword(),
+            savedUser.getCreatedAt(), roles);
+
+    try {
+      String json = objectMapper.writeValueAsString(registeredUser);
+
+      kafkaProducer.sendRegisteredUserEvent(json);
+    } catch (JsonProcessingException e) {
+      log.error("Exception: ", e);
+      throw new RuntimeException(e);
+    }
+
+    return registeredUser;
   }
 
   public User getUser(GetUser user) {
