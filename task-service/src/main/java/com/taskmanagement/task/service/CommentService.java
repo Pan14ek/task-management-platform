@@ -2,6 +2,7 @@ package com.taskmanagement.task.service;
 
 import com.taskmanagement.task.entity.CommentEntity;
 import com.taskmanagement.task.entity.TaskEntity;
+import com.taskmanagement.task.kafka.producer.KafkaProducer;
 import com.taskmanagement.task.repository.CommentRepository;
 import com.taskmanagement.task.repository.TaskRepository;
 import com.taskmanagement.task.service.model.Comment;
@@ -18,9 +19,17 @@ public class CommentService {
 
   private final CommentRepository commentRepository;
   private final TaskRepository taskRepository;
+  private final KafkaProducer kafkaProducer;
 
   @Transactional
   public Comment addComment(String taskId, String userId, String content) {
+
+    boolean userExists = kafkaProducer.checkUserId(userId);
+
+    if(!userExists) {
+      throw new EntityNotFoundException("User not found by id " + userId);
+    }
+
     TaskEntity task = taskRepository.findById(UUID.fromString(taskId))
         .orElseThrow(() -> new EntityNotFoundException("Task not found"));
 

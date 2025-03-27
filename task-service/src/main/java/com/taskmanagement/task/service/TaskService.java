@@ -1,6 +1,7 @@
 package com.taskmanagement.task.service;
 
 import com.taskmanagement.task.entity.TaskEntity;
+import com.taskmanagement.task.kafka.producer.KafkaProducer;
 import com.taskmanagement.task.repository.TaskRepository;
 import com.taskmanagement.task.service.exception.NotFoundTaskException;
 import com.taskmanagement.task.service.model.NewTask;
@@ -11,12 +12,15 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@AllArgsConstructor
 public class TaskService {
 
-  private TaskRepository taskRepository;
+  private final TaskRepository taskRepository;
+  private final KafkaProducer kafkaProducer;
 
   public List<Task> getTasks() {
     List<TaskEntity> taskEntities = taskRepository.findAll();
@@ -26,6 +30,14 @@ public class TaskService {
 
   @Transactional
   public Task createNewTask(NewTask newTask) {
+
+    boolean userExists = kafkaProducer.checkUserId(newTask.assignedUserId());
+
+    if (!userExists) {
+      throw new EntityNotFoundException(
+          "Assigned user not found by id " + newTask.assignedUserId());
+    }
+
     TaskEntity taskEntity = new TaskEntity();
 
     taskEntity.setTitle(newTask.title());
